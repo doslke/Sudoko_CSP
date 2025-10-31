@@ -97,13 +97,25 @@ class SudokuSolver:
             y += 1
         return None
 
+    def select_unassigned_variable(self):
+        mrv_pos = None
+        mrv_size = 10
+        for i in range(9):
+            for j in range(9):
+                if self.grid[i][j] == 0:
+                    domain_size = len(self.domains[(i, j)])
+                    if domain_size < mrv_size:
+                        mrv_size = domain_size
+                        mrv_pos = (i, j)
+        return mrv_pos
+
     def restore_forward_checking(self,affected,val):
         for x,y in affected:
             if val not in self.domains[(x,y)]:
                 self.domains[(x,y)].append(val)
 
     def solver(self, i, j):
-        pos = self.find_empty(i, j)
+        pos = self.select_unassigned_variable()
         if not pos:
             if self.gui:
                 self.gui.update_grid(self.grid)
