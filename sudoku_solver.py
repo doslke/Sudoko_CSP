@@ -114,6 +114,23 @@ class SudokuSolver:
             if val not in self.domains[(x,y)]:
                 self.domains[(x,y)].append(val)
 
+    def order_domain_values(self, x, y):
+        value_constraints = []
+        for val in self.domains[(x, y)]:
+            # 统计如果选 val，会减少多少其他格子的可能性
+            count = 0
+            for k in range(9):
+                if val in self.domains[(x, k)]:
+                    count += 1
+                if val in self.domains[(k, y)]:
+                    count += 1
+            for a, b in self.section_divide(x, y):
+                if val in self.domains[(a, b)]:
+                    count += 1
+            value_constraints.append((val, count))
+        value_constraints.sort(key=lambda t: t[1])
+        return [val for val, _ in value_constraints]
+
     def solver(self, i, j):
         pos = self.select_unassigned_variable()
         if not pos:
@@ -121,7 +138,7 @@ class SudokuSolver:
                 self.gui.update_grid(self.grid)
             return True
         x, y = pos
-        for val in list(self.domains[(x, y)]):
+        for val in self.order_domain_values(x, y):
             self.grid[x][y] = val
             if self.gui:
                 self.gui.update_grid(self.grid)
