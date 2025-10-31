@@ -1,20 +1,27 @@
 import math
+import time
 
 from docutils.nodes import section
 
 
 class SudokuSolver:
-    def __init__(self, grid):
+    def __init__(self, grid,gui=None):
         self.grid = [row[:] for row in grid]
         self.size = 9
         self.domains={}
+        self.gui = gui
 
     def display(self):
-        self.init_domains()
         for i in range(0,9):
             for j in range(0,9):
-                print(self.domains[(i,j)])
+                print(self.grid[i][j])
             print("\n")
+
+    def runs(self):
+        self.init_domains()
+        self.solver(0,0)
+
+
 
     def init_domains(self):
         for i in range(0,9):
@@ -57,10 +64,14 @@ class SudokuSolver:
     def forward_check(self,i,j,val):
         affected_index=[]
         for k in range(0,9):
+            if k==i:
+                continue
             if val in self.domains[(i,k)]:
                 self.domains[(i,k)].remove(val)
                 affected_index.append((i,k))
         for k in range(0,9):
+            if k==j:
+                continue
             if val in self.domains[(k,j)]:
                 self.domains[(k,j)].remove(val)
                 affected_index.append((k,j))
@@ -70,22 +81,51 @@ class SudokuSolver:
                 affected_index.append((x,y))
         return affected_index
 
-    def find_empty(self,i,j):
-        x=i
-        y=j
-        while x<9:
-            if y>8:
-                y=0
-                x+=1
-            if self.grid[x][y]==0:
-                return x,y
-            y+=1
+    def find_empty(self, i, j):
+        x, y = i, j  # 从当前位置开始（包含自己）
+        while x < 9:
+            if y >= 9:
+                y = 0
+                x += 1
+                continue
+            if x >= 9:
+                break
+            if self.grid[x][y] == 0:
+                return x, y
+            y += 1
         return None
 
-    def solver(self,i,j):
-        if i>=9:
+    def restore_forward_checking(self,affected,val):
+        for x,y in affected:
+            self.domains[(x,y)].append(val)
+
+    def solver(self, i, j):
+        pos = self.find_empty(i, j)
+        if not pos:
+            if self.gui:
+                self.gui.update_grid(self.grid)
             return True
-        if self.grid
+        x, y = pos
+        for val in list(self.domains[(x, y)]):
+            self.grid[x][y] = val
+            if self.gui:
+                self.gui.update_grid(self.grid)
+                time.sleep(0.05)
+            affected=self.forward_check(x, y, val)
+            conflict = any(len(self.domains[pos]) == 0 for pos in affected)
+            if not conflict and self.solver(x, y):
+                return True
+            self.grid[x][y] = 0
+            if self.gui:
+                self.gui.update_grid(self.grid)
+                time.sleep(0.05)
+            self.restore_forward_checking(affected,val)
+        return False
+
+
+
+
+
 
 
 

@@ -63,13 +63,22 @@ class SudokuGUI:
 
     def solve_button(self):
         grid = self.get_grid()
-        solver = SudokuSolver(grid)
-        solver.display()
+        solver = SudokuSolver(grid,self)
+        solver.runs()
 
     def run(self):
         self.create_grid()
         self.create_buttons()
         self.window.mainloop()
+
+    def update_grid(self, grid):
+        for i in range(9):
+            for j in range(9):
+                val = grid[i][j]
+                self.entries[i][j].delete(0, tk.END)
+                if val != 0:
+                    self.entries[i][j].insert(0, str(val))
+        self.window.update()
 
 
 if __name__ == "__main__":
