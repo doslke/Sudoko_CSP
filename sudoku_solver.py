@@ -64,25 +64,27 @@ class SudokuSolver:
     def forward_check(self,i,j,val):
         affected_index=[]
         for k in range(0,9):
-            if k==i:
+            if k==j:
                 continue
             if val in self.domains[(i,k)]:
                 self.domains[(i,k)].remove(val)
                 affected_index.append((i,k))
         for k in range(0,9):
-            if k==j:
+            if k==i:
                 continue
             if val in self.domains[(k,j)]:
                 self.domains[(k,j)].remove(val)
                 affected_index.append((k,j))
         for x,y in self.section_divide(i,j):
+            if x==i and y==j:
+                continue
             if val in self.domains[(x,y)]:
                 self.domains[(x,y)].remove(val)
                 affected_index.append((x,y))
         return affected_index
 
     def find_empty(self, i, j):
-        x, y = i, j  # 从当前位置开始（包含自己）
+        x, y = i, j
         while x < 9:
             if y >= 9:
                 y = 0
@@ -97,7 +99,8 @@ class SudokuSolver:
 
     def restore_forward_checking(self,affected,val):
         for x,y in affected:
-            self.domains[(x,y)].append(val)
+            if val not in self.domains[(x,y)]:
+                self.domains[(x,y)].append(val)
 
     def solver(self, i, j):
         pos = self.find_empty(i, j)
