@@ -1,76 +1,127 @@
 import math
 import time
 
-from docutils.nodes import section
+"""
+sudoku_solver.py
 
+Author: Yanzhi Song
+Date: 2025-10-31
+
+This module implements a Sudoku solver using backtracking with CSP techniques
+including MRV, LCV, and AC-3.
+"""
 
 class SudokuSolver:
+    """
+       Solve 9x9 Sudoku puzzles using CSP techniques.
+
+       Attributes:
+           grid (list[list[int]]): 9x9 Sudoku grid.
+           size (int): Size of the Sudoku (9).
+           domains (dict): Possible values for each cell.(domains of CSP)
+           gui (SudokuGUI): GUI object for visualization.
+           steps Solve steps to compute the efficient
+        """
     def __init__(self, grid,gui=None):
         self.grid = [row[:] for row in grid]
         self.size = 9
+        self.steps = 0
         self.domains={}
         self.gui = gui
 
+    """
+    Entrance of Solver
+    try to init domains and solve the puzzles
+    """
     def runs(self):
         self.init_domains()
-        self.ac3()
-        self.solver(0,0)
-
+        start_time = time.time()
+        solved = self.solver()
+        end_time = time.time()
+        if self.gui:
+            self.gui.show_stats(self.steps, end_time - start_time)
+        if not solved:
+            raise ValueError("No solution found")
+    """
+    Init each unit's domain before solve
+    """
     def init_domains(self):
         for i in range(0,9):
             for j in range(0,9):
-                self.domains[(i,j)] = self.initial_constraint_propagation(i,j)
-                if len(self.domains[(i,j)])==0:
+                self.domains[(i,j)] = self.initial_constraint_propagation(i,j) # Try to build domain of this unit
+                if len(self.domains[(i,j)])==0: # If one unit don't have possible unit, this puzzle couldn't solve
                     raise ValueError(f"Inconsistent puzzle: no possible value at ({i},{j})")
 
+    """
+       Build domain of each unit
+       
+       Attributes:
+            i,j: the position of the unit 
+    """
+
     def initial_constraint_propagation(self,i,j):
-        if self.grid[i][j]!=0:
+        if self.grid[i][j]!=0: # If the unit has number, it means it's domain only contains itself
             domain=[self.grid[i][j]]
             return domain
-        current_domain=[1,2,3,4,5,6,7,8,9]
-        for k in range(0,9):
+        current_domain=[1,2,3,4,5,6,7,8,9] # possible domain
+        for k in range(0,9): # scan by cols
             if self.grid[i][k]!=0:
                 if self.grid[i][k] in current_domain:
                     current_domain.remove(self.grid[i][k])
-        for k in range(0,9):
+
+        for k in range(0,9): #scan by rows
             if self.grid[k][j]!=0:
                 if self.grid[k][j] in current_domain:
                     current_domain.remove(self.grid[k][j])
-        sections=self.section_divide(i,j)
-        for x,y in sections:
+
+        sections=self.section_divide(i,j) # Get the section's other 8 units position
+        for x,y in sections: # scan by sections
             if self.grid[x][y]!=0:
                 if self.grid[x][y] in current_domain:
                     current_domain.remove(self.grid[x][y])
-        return current_domain
+        return current_domain #return the domain
 
+    """
+           Compute the section position
+                9*9 sudoku could be divided in 9 section, each section has 9 unit, if we have one position, we could 
+                get other eight units to avoid there are same numbers in it
+           Attributes:
+                i,j: the position of the unit 
+            
+        """
     def section_divide(self,i,j):
         section_index=[]
-        section_i=math.ceil((i+1)/3)
+        section_i=math.ceil((i+1)/3) #0-2 3-5 6-8 could be divided in three parts, this can help to divided section
         section_j=math.ceil((j+1)/3)
-        start_i=(section_i-1)*3
+        start_i=(section_i-1)*3 # to compute the first position of the section
         start_j=(section_j-1)*3
         for k in range(0,3):
             for l in range(0,3):
                 if (start_i+k)==i and (start_j+l)==j:
                     continue
-                section_index.append((start_i+k,start_j+l))
+                section_index.append((start_i+k,start_j+l)) # add the current unit's position into the section position list
         return section_index
 
+    """
+    Forward Checking (FC)
+    If one unit being updated in solve process, each unit affected by this unit's domain should be updated
+
+    """
     def forward_check(self,i,j,val):
         affected_index=[]
-        for k in range(0,9):
+        for k in range(0,9):# scan by cols
             if k==j:
                 continue
             if val in self.domains[(i,k)]:
                 self.domains[(i,k)].remove(val)
                 affected_index.append((i,k))
-        for k in range(0,9):
+        for k in range(0,9): # scan by rows
             if k==i:
                 continue
             if val in self.domains[(k,j)]:
                 self.domains[(k,j)].remove(val)
                 affected_index.append((k,j))
-        for x,y in self.section_divide(i,j):
+        for x,y in self.section_divide(i,j): # scan by section
             if x==i and y==j:
                 continue
             if val in self.domains[(x,y)]:
@@ -99,7 +150,6 @@ class SudokuSolver:
     def order_domain_values(self, x, y):
         value_constraints = []
         for val in self.domains[(x, y)]:
-            # 统计如果选 val，会减少多少其他格子的可能性
             count = 0
             for k in range(9):
                 if val in self.domains[(x, k)]:
@@ -144,28 +194,34 @@ class SudokuSolver:
                         queue.append((xk, xi))
         return True
 
-    def solver(self, i, j):
+    def solver(self, i=0, j=0):
         pos = self.select_unassigned_variable()
         if not pos:
             if self.gui:
                 self.gui.update_grid(self.grid)
+                self.gui.log_step("Sudoku Solved!")
             return True
+
         x, y = pos
         for val in self.order_domain_values(x, y):
+            self.steps += 1
             self.grid[x][y] = val
             if self.gui:
-                self.gui.update_grid(self.grid)
+                self.gui.update_grid(self.grid, highlight=(x, y))
+                self.gui.log_step(f"Trying {val} at ({x},{y})")
                 time.sleep(0.05)
-            affected=self.forward_check(x, y, val)
+
+            affected = self.forward_check(x, y, val)
             conflict = any(len(self.domains[pos]) == 0 for pos in affected)
-            if not conflict and self.solver(x, y):
+
+            if not conflict and self.solver():
                 return True
+
+            self.steps+=1
             self.grid[x][y] = 0
             if self.gui:
-                self.gui.update_grid(self.grid)
+                self.gui.update_grid(self.grid, highlight=(x, y))
+                self.gui.log_step(f"Backtracking at ({x},{y})")
                 time.sleep(0.05)
-            self.restore_forward_checking(affected,val)
-        isSolved=False
-        if not isSolved:
-            raise Exception(f"THIS IS AN NON-SOLUTION PUZZLE")
+            self.restore_forward_checking(affected, val)
         return False
