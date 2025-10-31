@@ -11,23 +11,17 @@ class SudokuSolver:
         self.domains={}
         self.gui = gui
 
-    def display(self):
-        for i in range(0,9):
-            for j in range(0,9):
-                print(self.grid[i][j])
-            print("\n")
-
     def runs(self):
         self.init_domains()
         self.ac3()
         self.solver(0,0)
 
-
-
     def init_domains(self):
         for i in range(0,9):
             for j in range(0,9):
                 self.domains[(i,j)] = self.initial_constraint_propagation(i,j)
+                if len(self.domains[(i,j)])==0:
+                    raise ValueError(f"Inconsistent puzzle: no possible value at ({i},{j})")
 
     def initial_constraint_propagation(self,i,j):
         if self.grid[i][j]!=0:
@@ -84,19 +78,6 @@ class SudokuSolver:
                 affected_index.append((x,y))
         return affected_index
 
-    def find_empty(self, i, j):
-        x, y = i, j
-        while x < 9:
-            if y >= 9:
-                y = 0
-                x += 1
-                continue
-            if x >= 9:
-                break
-            if self.grid[x][y] == 0:
-                return x, y
-            y += 1
-        return None
 
     def select_unassigned_variable(self):
         mrv_pos = None
@@ -184,12 +165,7 @@ class SudokuSolver:
                 self.gui.update_grid(self.grid)
                 time.sleep(0.05)
             self.restore_forward_checking(affected,val)
+        isSolved=False
+        if not isSolved:
+            raise Exception(f"THIS IS AN NON-SOLUTION PUZZLE")
         return False
-
-
-
-
-
-
-
-

@@ -64,7 +64,12 @@ class SudokuGUI:
     def solve_button(self):
         grid = self.get_grid()
         solver = SudokuSolver(grid,self)
-        solver.runs()
+        try:
+            solver.runs()
+        except ValueError as e:
+            messagebox.showerror("Error", str(e))
+        except Exception as e1:
+            messagebox.showerror("Error", str(e1))
 
     def run(self):
         self.create_grid()
