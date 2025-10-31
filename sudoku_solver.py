@@ -19,6 +19,7 @@ class SudokuSolver:
 
     def runs(self):
         self.init_domains()
+        self.ac3()
         self.solver(0,0)
 
 
@@ -130,6 +131,37 @@ class SudokuSolver:
             value_constraints.append((val, count))
         value_constraints.sort(key=lambda t: t[1])
         return [val for val, _ in value_constraints]
+
+    def get_neighbors(self, i, j):
+        neighbors = set()
+        for k in range(9):
+            if k != j:
+                neighbors.add((i, k))
+            if k != i:
+                neighbors.add((k, j))
+        for x, y in self.section_divide(i, j):
+            neighbors.add((x, y))
+        return neighbors
+
+    def revise(self, xi, xj):
+        revised = False
+        for val in self.domains[xi][:]:
+            if all(val == other for other in self.domains[xj]):
+                self.domains[xi].remove(val)
+                revised = True
+        return revised
+
+    def ac3(self):
+        queue = [(xi, xj) for xi in self.domains for xj in self.get_neighbors(*xi)]
+        while queue:
+            xi, xj = queue.pop(0)
+            if self.revise(xi, xj):
+                if not self.domains[xi]:
+                    return False
+                for xk in self.get_neighbors(*xi):
+                    if xk != xj:
+                        queue.append((xk, xi))
+        return True
 
     def solver(self, i, j):
         pos = self.select_unassigned_variable()
